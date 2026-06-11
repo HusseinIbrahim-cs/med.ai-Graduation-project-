@@ -14,16 +14,187 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      patients: {
+        Row: {
+          age: number | null
+          created_at: string
+          created_by: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          patient_code: string | null
+          primary_concern: string | null
+        }
+        Insert: {
+          age?: number | null
+          created_at?: string
+          created_by?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          patient_code?: string | null
+          primary_concern?: string | null
+        }
+        Update: {
+          age?: number | null
+          created_at?: string
+          created_by?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          patient_code?: string | null
+          primary_concern?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          patient_code: string | null
+          patient_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id: string
+          is_active?: boolean
+          patient_code?: string | null
+          patient_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          patient_code?: string | null
+          patient_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          doctor_notes: string | null
+          doctor_transcript: string | null
+          id: string
+          insurance_provider: string | null
+          next_session_time: string | null
+          patient_id: string
+          patient_transcript: string | null
+          prescribed_medicine: string | null
+          progress_status: Database["public"]["Enums"]["progress_status"] | null
+          session_date: string
+          soap: Json | null
+          summary: string | null
+          xray_findings: Json | null
+          xray_image_path: string | null
+          xray_top_disease: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          doctor_notes?: string | null
+          doctor_transcript?: string | null
+          id?: string
+          insurance_provider?: string | null
+          next_session_time?: string | null
+          patient_id: string
+          patient_transcript?: string | null
+          prescribed_medicine?: string | null
+          progress_status?:
+            | Database["public"]["Enums"]["progress_status"]
+            | null
+          session_date?: string
+          soap?: Json | null
+          summary?: string | null
+          xray_findings?: Json | null
+          xray_image_path?: string | null
+          xray_top_disease?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          doctor_notes?: string | null
+          doctor_transcript?: string | null
+          id?: string
+          insurance_provider?: string | null
+          next_session_time?: string | null
+          patient_id?: string
+          patient_transcript?: string | null
+          prescribed_medicine?: string | null
+          progress_status?:
+            | Database["public"]["Enums"]["progress_status"]
+            | null
+          session_date?: string
+          soap?: Json | null
+          summary?: string | null
+          xray_findings?: Json | null
+          xray_image_path?: string | null
+          xray_top_disease?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_email_for_patient_code: { Args: { _code: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "doctor" | "patient"
+      progress_status:
+        | "baseline_established"
+        | "showing_improvement"
+        | "no_improvement"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +321,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "doctor", "patient"],
+      progress_status: [
+        "baseline_established",
+        "showing_improvement",
+        "no_improvement",
+      ],
+    },
   },
 } as const
