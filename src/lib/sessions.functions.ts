@@ -97,13 +97,15 @@ export const updateSessionWrapUp = createServerFn({ method: "POST" })
         .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const update: Record<string, unknown> = {
-      doctor_notes: data.doctor_notes,
-      prescribed_medicine: data.prescribed_medicine,
-      next_session_time: data.next_session_time,
-    };
-    if (data.progress_status) update.progress_status = data.progress_status;
-    const { error } = await context.supabase.from("sessions").update(update).eq("id", data.id);
+    const { error } = await context.supabase
+      .from("sessions")
+      .update({
+        doctor_notes: data.doctor_notes,
+        prescribed_medicine: data.prescribed_medicine,
+        next_session_time: data.next_session_time,
+        ...(data.progress_status ? { progress_status: data.progress_status } : {}),
+      })
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
