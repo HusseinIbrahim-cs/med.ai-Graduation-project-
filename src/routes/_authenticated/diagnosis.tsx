@@ -94,6 +94,16 @@ function DiagnosisPage() {
                 </>
               )}
             </div>
+            {result?.imageUrl && (
+              <div className="mt-4">
+                <div className="text-xs uppercase text-muted-foreground mb-2">Grad-CAM heatmap</div>
+                <img
+                  src={result.imageUrl}
+                  alt="Grad-CAM visualization"
+                  className="mx-auto max-h-72 rounded-xl border"
+                />
+              </div>
+            )}
             {file && (
               <div className="mt-3 flex items-center justify-between text-sm">
                 <span className="truncate">{file.name}</span>
