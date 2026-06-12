@@ -7,7 +7,7 @@ import {
   ensureBootstrapAdmin,
   getMyRole,
   resolvePatientByPhonePin,
-  resolveStaffByUsername,
+  resolveStaffByEmail,
 } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,13 +22,12 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Mode = "staff" | "patient";
-type StaffRole = "doctor" | "admin";
 
 function AuthPage() {
   const navigate = useNavigate();
   const bootstrap = useServerFn(ensureBootstrapAdmin);
   const getRole = useServerFn(getMyRole);
-  const resolveStaff = useServerFn(resolveStaffByUsername);
+  const resolveStaff = useServerFn(resolveStaffByEmail);
   const resolvePatient = useServerFn(resolvePatientByPhonePin);
 
   const [mode, setMode] = useState<Mode>("staff");
@@ -64,7 +63,6 @@ function AuthPage() {
         </div>
 
         <div className="rounded-3xl border border-teal-100 bg-white p-6 shadow-md shadow-teal-100/40">
-          {/* Top Staff/Patient toggle */}
           <div className="grid grid-cols-2 p-1 rounded-full bg-emerald-50 mb-6">
             <ToggleButton active={mode === "staff"} onClick={() => setMode("staff")}>
               <Stethoscope className="h-4 w-4" /> Staff
@@ -78,7 +76,7 @@ function AuthPage() {
             <StaffForm
               loading={loading}
               setLoading={setLoading}
-              resolve={(username, role) => resolveStaff({ data: { username, role } })}
+              resolve={(email) => resolveStaff({ data: { email } })}
               onDone={redirectByRole}
             />
           ) : (
@@ -132,32 +130,28 @@ function StaffForm({
 }: {
   loading: boolean;
   setLoading: (v: boolean) => void;
-  resolve: (
-    username: string,
-    role: StaffRole,
-  ) => Promise<{ email: string | null; inactive?: boolean }>;
+  resolve: (email: string) => Promise<{ email: string | null; inactive?: boolean }>;
   onDone: () => void;
 }) {
-  const [role, setRole] = useState<StaffRole>("doctor");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const { email, inactive } = await resolve(username, role);
+      const { email: resolved, inactive } = await resolve(email);
       if (inactive) {
         toast.error("This account has been deactivated");
         return;
       }
-      if (!email) {
-        toast.error("Invalid username or role");
+      if (!resolved) {
+        toast.error("Invalid staff account");
         return;
       }
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: resolved, password });
       if (error) {
-        toast.error("Invalid username or password");
+        toast.error("Invalid email or password");
         return;
       }
       toast.success("Welcome back");
@@ -170,23 +164,13 @@ function StaffForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label className="text-slate-700">Role</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <RolePill active={role === "doctor"} onClick={() => setRole("doctor")}>
-            Doctor
-          </RolePill>
-          <RolePill active={role === "admin"} onClick={() => setRole("admin")}>
-            Admin
-          </RolePill>
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-slate-700">Username</Label>
+        <Label className="text-slate-700">Email</Label>
         <Input
+          type="email"
           required
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="e.g. admin"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@clinic.com"
           className="border-teal-100 focus-visible:ring-teal-500"
         />
       </div>
@@ -198,6 +182,80 @@ function StaffForm({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="border-teal-100 focus-visible:ring-teal-500"
+        />
+      </div>
+      <Button
+        type="submit"
+        className="w-full rounded-full bg-teal-600 hover:bg-teal-700 text-white"
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+      </Button>
+    </form>
+  );
+}
+
+function PatientForm({
+  loading,
+  setLoading,
+  resolve,
+  onDone,
+}: {
+  loading: boolean;
+  setLoading: (v: boolean) => void;
+  resolve: (
+    phone: string,
+    pin: string,
+  ) => Promise<{ email: string | null; password: string | null }>;
+  onDone: () => void;
+}) {
+  const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { email, password } = await resolve(phone, pin);
+      if (!email || !password) {
+        toast.error("Invalid phone number or PIN.");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error("Invalid phone number or PIN.");
+        return;
+      }
+      toast.success("Welcome");
+      onDone();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-slate-700">Phone Number</Label>
+        <Input
+          required
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="e.g. +1 555 123 4567"
+          className="border-teal-100 focus-visible:ring-teal-500"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-slate-700">PIN</Label>
+        <Input
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          required
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ""))}
+          placeholder="••••"
+          className="border-teal-100 focus-visible:ring-teal-500 tracking-widest"
         />
       </div>
       <Button
