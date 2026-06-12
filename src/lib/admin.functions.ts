@@ -78,3 +78,38 @@ export const setUserActive = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export const createAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (d: { full_name: string; email: string; password: string; phone_number: string }) =>
+      z
+        .object({
+          full_name: z.string().min(1).max(200),
+          email: z.string().email().max(255),
+          password: z.string().min(6).max(72),
+          phone_number: z
+            .string()
+            .min(4)
+            .max(40)
+            .regex(/^[0-9+\-\s()]+$/, "Invalid phone number"),
+        })
+        .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: data.full_name },
+    });
+    if (error || !created.user) throw new Error(error?.message ?? "create failed");
+    await supabaseAdmin
+      .from("profiles")
+      .update({ full_name: data.full_name, phone_number: data.phone_number.trim(), username: data.email.split("@")[0] })
+      .eq("id", created.user.id);
+    await supabaseAdmin.from("user_roles").insert({ user_id: created.user.id, role: "admin" });
+    return { id: created.user.id };
+  });
