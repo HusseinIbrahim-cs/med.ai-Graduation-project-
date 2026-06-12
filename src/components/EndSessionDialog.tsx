@@ -111,7 +111,7 @@ export function EndSessionDialog({
             <Input
               type="datetime-local"
               value={nextTime}
-              onChange={(e) => setNextTime(e.target.value)}
+              onChange={(e) => setWrapUp({ nextTime: e.target.value })}
             />
           </div>
           {needsStatus && (
