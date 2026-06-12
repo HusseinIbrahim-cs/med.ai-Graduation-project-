@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore } from "@/store/sessionDraft";
 import {
   Dialog,
   DialogContent,
