@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { analyzeXray, type XrayPrediction } from "@/lib/xrayApi";
+import { analyzeXray } from "@/lib/xrayApi";
 import { supabase } from "@/integrations/supabase/client";
 import { attachXrayToSession } from "@/lib/sessions.functions";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore } from "@/store/sessionDraft";
 
 export const Route = createFileRoute("/_authenticated/diagnosis")({
   head: () => ({ meta: [{ title: "AI Diagnosis · MED-AI" }] }),
@@ -19,26 +20,27 @@ export const Route = createFileRoute("/_authenticated/diagnosis")({
 });
 
 function DiagnosisPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [result, setResult] = useState<XrayPrediction | null>(null);
   const sessionId = useActivePatient((s) => s.sessionId);
   const attach = useServerFn(attachXrayToSession);
+  const xray = useSessionStore((s) => s.xray);
+  const setXray = useSessionStore((s) => s.setXray);
+  const { file, preview, result, fileName } = xray;
 
   const analyze = useMutation({
     mutationFn: (f: File) => analyzeXray(f),
-    onSuccess: (r) => setResult(r),
+    onSuccess: (r) => setXray({ result: r }),
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const onDrop = useCallback((files: File[]) => {
-    const f = files[0];
-    if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setResult(null);
-    analyze.mutate(f);
-  }, [analyze]);
+  const onDrop = useCallback(
+    (files: File[]) => {
+      const f = files[0];
+      if (!f) return;
+      setXray({ file: f, fileName: f.name, preview: URL.createObjectURL(f), result: null });
+      analyze.mutate(f);
+    },
+    [analyze, setXray],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
