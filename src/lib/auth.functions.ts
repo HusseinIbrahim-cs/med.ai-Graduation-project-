@@ -20,13 +20,12 @@ export const getMyRole = createServerFn({ method: "GET" })
           : null;
     const { data: profile } = await context.supabase
       .from("profiles")
-      .select("full_name, email, patient_id, patient_code")
+      .select("full_name, email, patient_id, patient_code, phone_number")
       .eq("id", context.userId)
       .maybeSingle();
     return { role, userId: context.userId, profile };
   });
 
-// Bootstrap: create initial admin if none exists. Idempotent. Public on purpose so the auth page can call it.
 export const ensureBootstrapAdmin = createServerFn({ method: "POST" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { count } = await supabaseAdmin
@@ -49,20 +48,53 @@ export const ensureBootstrapAdmin = createServerFn({ method: "POST" }).handler(a
   await supabaseAdmin.from("user_roles").insert({ user_id: created.user.id, role: "admin" });
   await supabaseAdmin
     .from("profiles")
-    .update({ full_name: "MED-AI Admin" })
+    .update({ full_name: "MED-AI Admin", phone_number: "admin" })
     .eq("id", created.user.id);
   return { created: true };
 });
 
-// Resolve patient code to its synthetic auth email so client can call signInWithPassword.
-export const resolvePatientEmail = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string }) => z.object({ code: z.string().min(1).max(64) }).parse(d))
+// Staff login: phone + password → return synthetic email so client can call signInWithPassword
+export const resolveStaffEmailByPhone = createServerFn({ method: "POST" })
+  .inputValidator((d: { phone: string }) =>
+    z.object({ phone: z.string().min(1).max(40) }).parse(d),
+  )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
-      .select("email")
-      .eq("patient_code", data.code)
+      .select("email, id")
+      .eq("phone_number", data.phone.trim())
       .maybeSingle();
-    return { email: row?.email ?? null };
+    if (!row) return { email: null };
+    // Ensure they have a staff role (not a patient)
+    const { data: roles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", row.id);
+    const isStaff = (roles ?? []).some((r) => r.role === "admin" || r.role === "doctor");
+    return { email: isStaff ? row.email : null };
+  });
+
+// Patient login: phone only → return synthetic credentials (phone == password)
+export const resolvePatientLoginByPhone = createServerFn({ method: "POST" })
+  .inputValidator((d: { phone: string }) =>
+    z.object({ phone: z.string().min(1).max(40) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const phone = data.phone.trim();
+    const { data: patient } = await supabaseAdmin
+      .from("patients")
+      .select("id")
+      .eq("phone_number", phone)
+      .maybeSingle();
+    if (!patient) return { email: null, password: null };
+    // Find the linked profile/auth user via patient_id
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("patient_id", patient.id)
+      .maybeSingle();
+    if (!profile?.email) return { email: null, password: null };
+    return { email: profile.email, password: phone };
   });
