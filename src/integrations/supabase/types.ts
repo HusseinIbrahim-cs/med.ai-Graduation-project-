@@ -24,6 +24,7 @@ export type Database = {
           id: string
           patient_code: string | null
           phone_number: string | null
+          pin: string | null
           primary_concern: string | null
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           id?: string
           patient_code?: string | null
           phone_number?: string | null
+          pin?: string | null
           primary_concern?: string | null
         }
         Update: {
@@ -46,6 +48,7 @@ export type Database = {
           id?: string
           patient_code?: string | null
           phone_number?: string | null
+          pin?: string | null
           primary_concern?: string | null
         }
         Relationships: []
@@ -60,6 +63,7 @@ export type Database = {
           patient_code: string | null
           patient_id: string | null
           phone_number: string | null
+          username: string | null
         }
         Insert: {
           created_at?: string
@@ -70,6 +74,7 @@ export type Database = {
           patient_code?: string | null
           patient_id?: string | null
           phone_number?: string | null
+          username?: string | null
         }
         Update: {
           created_at?: string
@@ -80,6 +85,7 @@ export type Database = {
           patient_code?: string | null
           patient_id?: string | null
           phone_number?: string | null
+          username?: string | null
         }
         Relationships: [
           {

@@ -93,6 +93,7 @@ export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}
     gender: "",
     primary_concern: "",
     phone_number: "",
+    pin: "",
   });
   const create = useServerFn(createPatient);
   const qc = useQueryClient();
@@ -108,6 +109,7 @@ export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}
           gender: form.gender,
           primary_concern: form.primary_concern,
           phone_number: form.phone_number,
+          pin: form.pin,
         },
       }),
     onSuccess: (row) => {
@@ -142,17 +144,30 @@ export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}
             <Label>Full name</Label>
             <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
           </div>
-          <div className="space-y-1.5">
-            <Label>Phone number</Label>
-            <Input
-              value={form.phone_number}
-              onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
-              placeholder="e.g. +1 555 123 4567"
-            />
-            <p className="text-xs text-muted-foreground">
-              The patient will sign in using this phone number.
-            </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Phone number</Label>
+              <Input
+                value={form.phone_number}
+                onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
+                placeholder="e.g. +1 555 123 4567"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>PIN (4-6 digits)</Label>
+              <Input
+                inputMode="numeric"
+                value={form.pin}
+                onChange={(e) =>
+                  setForm({ ...form, pin: e.target.value.replace(/[^0-9]/g, "").slice(0, 6) })
+                }
+                placeholder="e.g. 1234"
+              />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            The patient will sign in with their phone number and this PIN.
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Age</Label>

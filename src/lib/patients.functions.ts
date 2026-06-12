@@ -41,7 +41,7 @@ export const getPatient = createServerFn({ method: "POST" })
     return row;
   });
 
-// Create patient + auto-provision an auth user keyed on phone (phone is the password too).
+// Create patient + auto-provision an auth user. Patient logs in with phone + PIN.
 export const createPatient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: {
@@ -50,6 +50,7 @@ export const createPatient = createServerFn({ method: "POST" })
     gender: string;
     primary_concern: string;
     phone_number: string;
+    pin: string;
   }) =>
     z
       .object({
@@ -62,14 +63,15 @@ export const createPatient = createServerFn({ method: "POST" })
           .min(4)
           .max(40)
           .regex(/^[0-9+\-\s()]+$/, "Invalid phone number"),
+        pin: z.string().min(4).max(20).regex(/^[0-9]+$/, "PIN must be digits only"),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const phone = data.phone_number.trim();
+    const pin = data.pin.trim();
 
-    // 1. Insert patient row (let DB auto-generate UUID).
     const { data: patientRow, error: pErr } = await supabaseAdmin
       .from("patients")
       .insert({
@@ -78,23 +80,22 @@ export const createPatient = createServerFn({ method: "POST" })
         gender: data.gender,
         primary_concern: data.primary_concern,
         phone_number: phone,
+        pin,
         created_by: context.userId,
       })
-      .select("id, full_name, age, gender, primary_concern, phone_number")
+      .select("id, full_name, age, gender, primary_concern, phone_number, pin")
       .single();
     if (pErr) throw new Error(pErr.message);
 
-    // 2. Create auth user (synthetic email; password = phone) so they can log in by phone.
     const cleanPhone = phone.replace(/[^0-9a-z]/gi, "");
     const syntheticEmail = `patient-${cleanPhone}@medai.local`;
     const { data: created, error: aErr } = await supabaseAdmin.auth.admin.createUser({
       email: syntheticEmail,
-      password: phone,
+      password: pin,
       email_confirm: true,
       user_metadata: { full_name: data.full_name },
     });
     if (aErr || !created.user) {
-      // Roll back patient row to keep data consistent.
       await supabaseAdmin.from("patients").delete().eq("id", patientRow.id);
       throw new Error(aErr?.message ?? "Failed to create patient account");
     }
