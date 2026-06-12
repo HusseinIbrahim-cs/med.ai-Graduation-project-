@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, UserPlus, Users, Shield, Power } from "lucide-react";
+import { Plus, UserPlus, Shield, Power } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { listUsers, createDoctor, createPatientUser, setUserActive } from "@/lib/admin.functions";
+import { listUsers, createDoctor, setUserActive } from "@/lib/admin.functions";
 import { listPatients, createPatient } from "@/lib/patients.functions";
 import { useActivePatient } from "@/store/activePatient";
 
@@ -76,7 +76,7 @@ function PatientsPanel() {
                   {p.gender ?? "—"} · {p.age ?? "?"} · {p.primary_concern ?? ""}
                 </div>
               </div>
-              {p.patient_code && <Badge variant="secondary">{p.patient_code}</Badge>}
+              {p.phone_number && <Badge variant="secondary">{p.phone_number}</Badge>}
             </div>
           ))}
         </div>
@@ -87,7 +87,13 @@ function PatientsPanel() {
 
 export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", age: "", gender: "", primary_concern: "" });
+  const [form, setForm] = useState({
+    full_name: "",
+    age: "",
+    gender: "",
+    primary_concern: "",
+    phone_number: "",
+  });
   const create = useServerFn(createPatient);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -101,12 +107,19 @@ export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}
           age: Number(form.age),
           gender: form.gender,
           primary_concern: form.primary_concern,
+          phone_number: form.phone_number,
         },
       }),
     onSuccess: (row) => {
       toast.success("Patient created");
       qc.invalidateQueries({ queryKey: ["patients"] });
-      setPatient({ id: row.id, full_name: row.full_name, age: row.age, gender: row.gender, primary_concern: row.primary_concern });
+      setPatient({
+        id: row.id,
+        full_name: row.full_name,
+        age: row.age,
+        gender: row.gender,
+        primary_concern: row.primary_concern,
+      });
       setOpen(false);
       navigate({ to: "/records" });
     },
@@ -117,7 +130,9 @@ export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button className="rounded-full"><Plus className="h-4 w-4 mr-1.5" />New Patient</Button>
+          <Button className="rounded-full">
+            <Plus className="h-4 w-4 mr-1.5" />New Patient
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent>
@@ -126,6 +141,17 @@ export function NewPatientDialog({ trigger }: { trigger?: React.ReactNode } = {}
           <div className="space-y-1.5">
             <Label>Full name</Label>
             <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Phone number</Label>
+            <Input
+              value={form.phone_number}
+              onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
+              placeholder="e.g. +1 555 123 4567"
+            />
+            <p className="text-xs text-muted-foreground">
+              The patient will sign in using this phone number.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -171,7 +197,6 @@ function UsersPanel() {
     <div className="space-y-4">
       <div className="flex gap-2">
         <NewDoctorDialog />
-        <NewPatientUserDialog />
       </div>
       <Card className="rounded-3xl">
         <CardHeader><CardTitle className="text-lg">Users</CardTitle></CardHeader>
@@ -181,7 +206,9 @@ function UsersPanel() {
               <div key={u.id} className="py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-medium truncate">{u.full_name || "(no name)"}</div>
-                  <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {u.email}{u.phone_number ? ` · ${u.phone_number}` : ""}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {u.roles.map((r: string) => (
@@ -213,7 +240,7 @@ function UsersPanel() {
 
 function NewDoctorDialog() {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", phone_number: "" });
   const create = useServerFn(createDoctor);
   const qc = useQueryClient();
   const mut = useMutation({
@@ -222,7 +249,7 @@ function NewDoctorDialog() {
       toast.success("Doctor created");
       qc.invalidateQueries({ queryKey: ["users"] });
       setOpen(false);
-      setForm({ full_name: "", email: "", password: "" });
+      setForm({ full_name: "", email: "", password: "", phone_number: "" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -235,74 +262,9 @@ function NewDoctorDialog() {
         <DialogHeader><DialogTitle>Add doctor</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5"><Label>Full name</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Phone number</Label><Input value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} placeholder="e.g. +1 555 123 4567" /></div>
           <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Temporary password</Label><Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>Create</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function NewPatientUserDialog() {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    full_name: "",
-    patient_code: "",
-    pin: "",
-    age: "",
-    gender: "",
-    primary_concern: "",
-  });
-  const create = useServerFn(createPatientUser);
-  const qc = useQueryClient();
-  const mut = useMutation({
-    mutationFn: () =>
-      create({
-        data: {
-          ...form,
-          age: Number(form.age),
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Patient account created");
-      qc.invalidateQueries({ queryKey: ["users"] });
-      qc.invalidateQueries({ queryKey: ["patients"] });
-      setOpen(false);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="rounded-full"><Users className="h-4 w-4 mr-1.5" />New Patient Account</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Create patient account</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5"><Label>Full name</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Patient ID</Label><Input value={form.patient_code} onChange={(e) => setForm({ ...form, patient_code: e.target.value })} placeholder="P-1024" /></div>
-            <div className="space-y-1.5"><Label>PIN (min 4)</Label><Input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Age</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} /></div>
-            <div className="space-y-1.5">
-              <Label>Gender</Label>
-              <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
-                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1.5"><Label>Primary concern</Label><Textarea rows={3} value={form.primary_concern} onChange={(e) => setForm({ ...form, primary_concern: e.target.value })} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

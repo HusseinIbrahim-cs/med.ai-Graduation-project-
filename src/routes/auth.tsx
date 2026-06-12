@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import { Activity, Loader2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureBootstrapAdmin, getMyRole, resolvePatientEmail } from "@/lib/auth.functions";
+import {
+  ensureBootstrapAdmin,
+  getMyRole,
+  resolvePatientLoginByPhone,
+  resolveStaffEmailByPhone,
+} from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +25,8 @@ function AuthPage() {
   const navigate = useNavigate();
   const bootstrap = useServerFn(ensureBootstrapAdmin);
   const getRole = useServerFn(getMyRole);
-  const resolve = useServerFn(resolvePatientEmail);
+  const resolveStaff = useServerFn(resolveStaffEmailByPhone);
+  const resolvePatient = useServerFn(resolvePatientLoginByPhone);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -58,13 +64,18 @@ function AuthPage() {
               <TabsTrigger value="patient" className="rounded-full">Patient</TabsTrigger>
             </TabsList>
             <TabsContent value="staff" className="mt-5">
-              <StaffForm loading={loading} setLoading={setLoading} onDone={redirectByRole} />
+              <StaffForm
+                loading={loading}
+                setLoading={setLoading}
+                resolve={(phone) => resolveStaff({ data: { phone } })}
+                onDone={redirectByRole}
+              />
             </TabsContent>
             <TabsContent value="patient" className="mt-5">
               <PatientForm
                 loading={loading}
                 setLoading={setLoading}
-                resolve={(code) => resolve({ data: { code } })}
+                resolve={(phone) => resolvePatient({ data: { phone } })}
                 onDone={redirectByRole}
               />
             </TabsContent>
@@ -81,28 +92,41 @@ function AuthPage() {
 function StaffForm({
   loading,
   setLoading,
+  resolve,
   onDone,
 }: {
   loading: boolean;
   setLoading: (v: boolean) => void;
+  resolve: (phone: string) => Promise<{ email: string | null }>;
   onDone: () => void;
 }) {
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    toast.success("Welcome back");
-    onDone();
+    try {
+      const { email } = await resolve(phone);
+      if (!email) {
+        toast.error("No staff account found for that phone number");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error("Invalid credentials");
+        return;
+      }
+      toast.success("Welcome back");
+      onDone();
+    } finally {
+      setLoading(false);
+    }
   }
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Email</Label>
-        <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Label>Phone number</Label>
+        <Input required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +1 555 123 4567" />
       </div>
       <div className="space-y-1.5">
         <Label>Password</Label>
@@ -123,34 +147,35 @@ function PatientForm({
 }: {
   loading: boolean;
   setLoading: (v: boolean) => void;
-  resolve: (code: string) => Promise<{ email: string | null }>;
+  resolve: (phone: string) => Promise<{ email: string | null; password: string | null }>;
   onDone: () => void;
 }) {
-  const [code, setCode] = useState("");
-  const [pin, setPin] = useState("");
+  const [phone, setPhone] = useState("");
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { email } = await resolve(code);
-    if (!email) {
+    try {
+      const { email, password } = await resolve(phone);
+      if (!email || !password) {
+        toast.error("No patient found for that phone number");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error("Sign-in failed");
+        return;
+      }
+      toast.success("Welcome");
+      onDone();
+    } finally {
       setLoading(false);
-      return toast.error("Patient ID not found");
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pin });
-    setLoading(false);
-    if (error) return toast.error("Invalid PIN");
-    toast.success("Welcome");
-    onDone();
   }
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Patient ID</Label>
-        <Input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. P-1024" />
-      </div>
-      <div className="space-y-1.5">
-        <Label>PIN</Label>
-        <Input type="password" required value={pin} onChange={(e) => setPin(e.target.value)} />
+        <Label>Phone number</Label>
+        <Input required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +1 555 123 4567" />
       </div>
       <Button type="submit" className="w-full rounded-full" disabled={loading}>
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
