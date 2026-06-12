@@ -93,7 +93,7 @@ export function EndSessionDialog({
             <Textarea
               rows={3}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => setWrapUp({ notes: e.target.value })}
               placeholder="Clinical observations, follow-ups…"
             />
           </div>
