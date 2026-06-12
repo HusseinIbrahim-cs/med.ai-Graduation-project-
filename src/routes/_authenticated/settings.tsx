@@ -118,6 +118,22 @@ function SettingsPage() {
               </Button>
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>Gemini AI Model</Label>
+            <Select value={model} onValueChange={changeModel}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini-2.5-flash">
+                  Gemini 2.5 Flash (Fast & Conversational)
+                </SelectItem>
+                <SelectItem value="gemini-2.5-pro">
+                  Gemini 2.5 Pro (Deep Clinical Reasoning)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button onClick={saveKey} className="rounded-full">
             Save key
           </Button>
