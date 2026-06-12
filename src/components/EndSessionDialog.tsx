@@ -32,9 +32,10 @@ export function EndSessionDialog({
   const setSessionId = useActivePatient((s) => s.setSessionId);
   const qc = useQueryClient();
 
-  const [notes, setNotes] = useState("");
-  const [meds, setMeds] = useState("");
-  const [nextTime, setNextTime] = useState("");
+  const wrapUp = useSessionStore((s) => s.wrapUp);
+  const setWrapUp = useSessionStore((s) => s.setWrapUp);
+  const resetDraft = useSessionStore((s) => s.resetDraft);
+  const { notes, meds, nextTime } = wrapUp;
   const [status, setStatus] = useState<"showing_improvement" | "no_improvement" | "">("");
   const [needsStatus, setNeedsStatus] = useState(false);
 
@@ -71,9 +72,7 @@ export function EndSessionDialog({
       setSessionId(null);
       qc.invalidateQueries({ queryKey: ["sessions"] });
       onOpenChange(false);
-      setNotes("");
-      setMeds("");
-      setNextTime("");
+      resetDraft();
       setStatus("");
     },
     onError: (e: Error) => toast.error(e.message),
