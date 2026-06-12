@@ -73,6 +73,7 @@ function ConsultationPage() {
     const text = input.trim();
     if (!text) return;
     const key = localStorage.getItem("geminiApiKey");
+    const model = localStorage.getItem("geminiModel") || "gemini-2.5-flash";
     if (!key) {
       toast.error("Add your Gemini API key in Settings first");
       return;
@@ -82,10 +83,11 @@ function ConsultationPage() {
     setInput("");
     setLoading(true);
     try {
+      const recentSessions = (sessions ?? []).slice(0, 3);
       const systemInstruction =
-        SYSTEM_PROMPT_BASE + "\n\n" + buildPatientContext(patient, sessions);
+        SYSTEM_PROMPT_BASE + "\n\n" + buildPatientContext(patient, recentSessions);
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

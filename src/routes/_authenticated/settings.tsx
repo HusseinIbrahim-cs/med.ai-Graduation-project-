@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { KeyRound, Eye, EyeOff } from "lucide-react";
 import { getMyRole } from "@/lib/auth.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,10 +32,18 @@ function SettingsPage() {
 
   const [apiKey, setApiKey] = useState("");
   const [show, setShow] = useState(false);
+  const [model, setModel] = useState("gemini-2.5-flash");
 
   useEffect(() => {
     setApiKey(localStorage.getItem("geminiApiKey") ?? "");
+    setModel(localStorage.getItem("geminiModel") ?? "gemini-2.5-flash");
   }, []);
+
+  function changeModel(value: string) {
+    setModel(value);
+    localStorage.setItem("geminiModel", value);
+    toast.success("Gemini model updated");
+  }
 
   function saveKey() {
     if (!apiKey.trim()) {
@@ -102,6 +117,22 @@ function SettingsPage() {
                 {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Gemini AI Model</Label>
+            <Select value={model} onValueChange={changeModel}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini-2.5-flash">
+                  Gemini 2.5 Flash (Fast & Conversational)
+                </SelectItem>
+                <SelectItem value="gemini-2.5-pro">
+                  Gemini 2.5 Pro (Deep Clinical Reasoning)
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button onClick={saveKey} className="rounded-full">
             Save key
