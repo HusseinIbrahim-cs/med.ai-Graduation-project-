@@ -20,7 +20,7 @@ export const getMyRole = createServerFn({ method: "GET" })
           : null;
     const { data: profile } = await context.supabase
       .from("profiles")
-      .select("full_name, email, patient_id, patient_code, phone_number")
+      .select("full_name, email, patient_id, patient_code, phone_number, username")
       .eq("id", context.userId)
       .maybeSingle();
     return { role, userId: context.userId, profile };
@@ -32,7 +32,15 @@ export const ensureBootstrapAdmin = createServerFn({ method: "POST" }).handler(a
     .from("user_roles")
     .select("*", { count: "exact", head: true })
     .eq("role", "admin");
-  if ((count ?? 0) > 0) return { created: false };
+  if ((count ?? 0) > 0) {
+    // Ensure admin profile has username set
+    await supabaseAdmin
+      .from("profiles")
+      .update({ username: "admin" })
+      .eq("email", "admin@med.ai.com")
+      .is("username", null);
+    return { created: false };
+  }
 
   const email = "admin@med.ai.com";
   const password = "password2004";
@@ -48,53 +56,67 @@ export const ensureBootstrapAdmin = createServerFn({ method: "POST" }).handler(a
   await supabaseAdmin.from("user_roles").insert({ user_id: created.user.id, role: "admin" });
   await supabaseAdmin
     .from("profiles")
-    .update({ full_name: "MED-AI Admin", phone_number: "admin" })
+    .update({ full_name: "MED-AI Admin", username: "admin", phone_number: "admin" })
     .eq("id", created.user.id);
   return { created: true };
 });
 
-// Staff login: phone + password → return synthetic email so client can call signInWithPassword
-export const resolveStaffEmailByPhone = createServerFn({ method: "POST" })
-  .inputValidator((d: { phone: string }) =>
-    z.object({ phone: z.string().min(1).max(40) }).parse(d),
+// Staff login: resolve auth email by username + required staff role.
+// Password validation is delegated to supabase.auth.signInWithPassword on the client.
+export const resolveStaffByUsername = createServerFn({ method: "POST" })
+  .inputValidator((d: { username: string; role: "admin" | "doctor" }) =>
+    z
+      .object({
+        username: z.string().min(1).max(80),
+        role: z.enum(["admin", "doctor"]),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
-      .select("email, id")
-      .eq("phone_number", data.phone.trim())
+      .select("email, id, is_active")
+      .ilike("username", data.username.trim())
       .maybeSingle();
-    if (!row) return { email: null };
-    // Ensure they have a staff role (not a patient)
+    if (!row || !row.email) return { email: null };
+    if (row.is_active === false) return { email: null, inactive: true };
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", row.id);
-    const isStaff = (roles ?? []).some((r) => r.role === "admin" || r.role === "doctor");
-    return { email: isStaff ? row.email : null };
+    const hasRole = (roles ?? []).some((r) => r.role === data.role);
+    if (!hasRole) return { email: null };
+    return { email: row.email };
   });
 
-// Patient login: phone only → return synthetic credentials (phone == password)
-export const resolvePatientLoginByPhone = createServerFn({ method: "POST" })
-  .inputValidator((d: { phone: string }) =>
-    z.object({ phone: z.string().min(1).max(40) }).parse(d),
+// Patient login: phone + PIN → returns synthetic email + the PIN (used as auth password).
+export const resolvePatientByPhonePin = createServerFn({ method: "POST" })
+  .inputValidator((d: { phone: string; pin: string }) =>
+    z
+      .object({
+        phone: z.string().min(1).max(40),
+        pin: z.string().min(1).max(40),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const phone = data.phone.trim();
+    const pin = data.pin.trim();
     const { data: patient } = await supabaseAdmin
       .from("patients")
-      .select("id")
+      .select("id, pin")
       .eq("phone_number", phone)
       .maybeSingle();
-    if (!patient) return { email: null, password: null };
-    // Find the linked profile/auth user via patient_id
+    if (!patient || !patient.pin || patient.pin !== pin) {
+      return { email: null, password: null };
+    }
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("email")
       .eq("patient_id", patient.id)
       .maybeSingle();
     if (!profile?.email) return { email: null, password: null };
-    return { email: profile.email, password: phone };
+    return { email: profile.email, password: pin };
   });
