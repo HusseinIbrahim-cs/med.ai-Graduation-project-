@@ -32,10 +32,18 @@ function SettingsPage() {
 
   const [apiKey, setApiKey] = useState("");
   const [show, setShow] = useState(false);
+  const [model, setModel] = useState("gemini-2.5-flash");
 
   useEffect(() => {
     setApiKey(localStorage.getItem("geminiApiKey") ?? "");
+    setModel(localStorage.getItem("geminiModel") ?? "gemini-2.5-flash");
   }, []);
+
+  function changeModel(value: string) {
+    setModel(value);
+    localStorage.setItem("geminiModel", value);
+    toast.success("Gemini model updated");
+  }
 
   function saveKey() {
     if (!apiKey.trim()) {
