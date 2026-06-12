@@ -23,6 +23,7 @@ export type Database = {
           gender: string | null
           id: string
           patient_code: string | null
+          phone_number: string | null
           primary_concern: string | null
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           gender?: string | null
           id?: string
           patient_code?: string | null
+          phone_number?: string | null
           primary_concern?: string | null
         }
         Update: {
@@ -43,6 +45,7 @@ export type Database = {
           gender?: string | null
           id?: string
           patient_code?: string | null
+          phone_number?: string | null
           primary_concern?: string | null
         }
         Relationships: []
@@ -56,6 +59,7 @@ export type Database = {
           is_active: boolean
           patient_code: string | null
           patient_id: string | null
+          phone_number: string | null
         }
         Insert: {
           created_at?: string
@@ -65,6 +69,7 @@ export type Database = {
           is_active?: boolean
           patient_code?: string | null
           patient_id?: string | null
+          phone_number?: string | null
         }
         Update: {
           created_at?: string
@@ -74,6 +79,7 @@ export type Database = {
           is_active?: boolean
           patient_code?: string | null
           patient_id?: string | null
+          phone_number?: string | null
         }
         Relationships: [
           {
