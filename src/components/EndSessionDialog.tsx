@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore } from "@/store/sessionDraft";
 import {
   Dialog,
   DialogContent,
@@ -31,9 +32,10 @@ export function EndSessionDialog({
   const setSessionId = useActivePatient((s) => s.setSessionId);
   const qc = useQueryClient();
 
-  const [notes, setNotes] = useState("");
-  const [meds, setMeds] = useState("");
-  const [nextTime, setNextTime] = useState("");
+  const wrapUp = useSessionStore((s) => s.wrapUp);
+  const setWrapUp = useSessionStore((s) => s.setWrapUp);
+  const resetDraft = useSessionStore((s) => s.resetDraft);
+  const { notes, meds, nextTime } = wrapUp;
   const [status, setStatus] = useState<"showing_improvement" | "no_improvement" | "">("");
   const [needsStatus, setNeedsStatus] = useState(false);
 
@@ -70,9 +72,7 @@ export function EndSessionDialog({
       setSessionId(null);
       qc.invalidateQueries({ queryKey: ["sessions"] });
       onOpenChange(false);
-      setNotes("");
-      setMeds("");
-      setNextTime("");
+      resetDraft();
       setStatus("");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -93,7 +93,7 @@ export function EndSessionDialog({
             <Textarea
               rows={3}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => setWrapUp({ notes: e.target.value })}
               placeholder="Clinical observations, follow-ups…"
             />
           </div>
@@ -102,7 +102,7 @@ export function EndSessionDialog({
             <Textarea
               rows={3}
               value={meds}
-              onChange={(e) => setMeds(e.target.value)}
+              onChange={(e) => setWrapUp({ meds: e.target.value })}
               placeholder="Medication, dosage, frequency…"
             />
           </div>
@@ -111,7 +111,7 @@ export function EndSessionDialog({
             <Input
               type="datetime-local"
               value={nextTime}
-              onChange={(e) => setNextTime(e.target.value)}
+              onChange={(e) => setWrapUp({ nextTime: e.target.value })}
             />
           </div>
           {needsStatus && (

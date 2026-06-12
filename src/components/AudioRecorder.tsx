@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,14 +6,16 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { updateSessionAiData } from "@/lib/sessions.functions";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore } from "@/store/sessionDraft";
 import { useQueryClient } from "@tanstack/react-query";
 
 const WEBHOOK = "https://61f15548.kube-ops.com/webhook/1d39a0c7-c2f3-4eab-9ff0-1aa745bfeaa6";
 
 export function AudioRecorder() {
-  const [recording, setRecording] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audio = useSessionStore((s) => s.audio);
+  const setAudio = useSessionStore((s) => s.setAudio);
+  const { recording, processing, audioUrl } = audio;
+
   const chunks = useRef<Blob[]>([]);
   const recorder = useRef<MediaRecorder | null>(null);
   const sessionId = useActivePatient((s) => s.sessionId);
@@ -30,12 +32,12 @@ export function AudioRecorder() {
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunks.current, { type: chunks.current[0]?.type || "audio/webm" });
-        setAudioUrl(URL.createObjectURL(blob));
+        setAudio({ blob, audioUrl: URL.createObjectURL(blob) });
         await sendToWebhook(blob);
       };
       mr.start();
       recorder.current = mr;
-      setRecording(true);
+      setAudio({ recording: true });
     } catch (e: any) {
       toast.error(e.message ?? "Could not start recording");
     }
@@ -43,7 +45,7 @@ export function AudioRecorder() {
 
   function stop() {
     recorder.current?.stop();
-    setRecording(false);
+    setAudio({ recording: false });
   }
 
   async function sendToWebhook(blob: Blob) {
@@ -51,7 +53,7 @@ export function AudioRecorder() {
       toast.error("Start a session first (open Patient Records → New Session)");
       return;
     }
-    setProcessing(true);
+    setAudio({ processing: true });
     try {
       const form = new FormData();
       form.append("file", blob, "recording.webm");
@@ -60,13 +62,14 @@ export function AudioRecorder() {
       const json = await res.json();
       const summary = json?.[0]?.output ?? null;
       const soap = json?.[1] ?? null;
+      setAudio({ summary, soap });
       await update({ data: { id: sessionId, summary, soap } });
       toast.success("Session AI data saved");
       qc.invalidateQueries({ queryKey: ["sessions", patient?.id] });
     } catch (e: any) {
       toast.error(e.message ?? "Failed to process recording");
     } finally {
-      setProcessing(false);
+      setAudio({ processing: false });
     }
   }
 
