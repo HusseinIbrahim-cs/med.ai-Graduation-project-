@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSessionsForPatient } from "@/lib/sessions.functions";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore } from "@/store/sessionDraft";
 import { AudioRecorder } from "@/components/AudioRecorder";
 
 export const Route = createFileRoute("/_authenticated/summary")({
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/summary")({
 function SummaryPage() {
   const patient = useActivePatient((s) => s.patient);
   const sessionId = useActivePatient((s) => s.sessionId);
+  const draftAudio = useSessionStore((s) => s.audio);
   const list = useServerFn(listSessionsForPatient);
   const { data: sessions = [] } = useQuery({
     queryKey: ["sessions", patient?.id],
@@ -21,6 +23,9 @@ function SummaryPage() {
     enabled: !!patient,
   });
   const session = sessions.find((s) => s.id === sessionId) ?? sessions[0];
+
+  const summary = draftAudio.summary ?? session?.summary ?? null;
+  const soap = draftAudio.soap ?? session?.soap ?? null;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -35,7 +40,7 @@ function SummaryPage() {
 
       <AudioRecorder />
 
-      {!session && (
+      {!summary && !soap && (
         <Card className="rounded-3xl">
           <CardContent className="py-10 text-center text-muted-foreground text-sm">
             No session to summarize yet — record audio above to generate one.
@@ -43,18 +48,18 @@ function SummaryPage() {
         </Card>
       )}
 
-      {session?.summary && (
+      {summary && (
         <Card className="rounded-3xl">
           <CardHeader>
             <CardTitle className="text-lg">Summary</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm whitespace-pre-wrap">{session.summary}</p>
+            <p className="text-sm whitespace-pre-wrap">{summary}</p>
           </CardContent>
         </Card>
       )}
 
-      {session?.soap && (
+      {soap && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(["S", "O", "A", "P"] as const).map((k) => (
             <Card key={k} className="rounded-3xl">
@@ -67,7 +72,7 @@ function SummaryPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{(session.soap as any)[k] ?? "—"}</p>
+                <p className="text-sm whitespace-pre-wrap">{(soap as any)[k] ?? "—"}</p>
               </CardContent>
             </Card>
           ))}
