@@ -61,23 +61,18 @@ export const ensureBootstrapAdmin = createServerFn({ method: "POST" }).handler(a
   return { created: true };
 });
 
-// Staff login: resolve auth email by username + required staff role.
-// Password validation is delegated to supabase.auth.signInWithPassword on the client.
-export const resolveStaffByUsername = createServerFn({ method: "POST" })
-  .inputValidator((d: { username: string; role: "admin" | "doctor" }) =>
-    z
-      .object({
-        username: z.string().min(1).max(80),
-        role: z.enum(["admin", "doctor"]),
-      })
-      .parse(d),
+// Staff login: validate the account exists, is active, and has a staff role.
+// The role (admin vs doctor) is determined from user_roles after sign-in via getMyRole.
+export const resolveStaffByEmail = createServerFn({ method: "POST" })
+  .inputValidator((d: { email: string }) =>
+    z.object({ email: z.string().email().max(255) }).parse(d),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
       .select("email, id, is_active")
-      .ilike("username", data.username.trim())
+      .ilike("email", data.email.trim())
       .maybeSingle();
     if (!row || !row.email) return { email: null };
     if (row.is_active === false) return { email: null, inactive: true };
@@ -85,8 +80,8 @@ export const resolveStaffByUsername = createServerFn({ method: "POST" })
       .from("user_roles")
       .select("role")
       .eq("user_id", row.id);
-    const hasRole = (roles ?? []).some((r) => r.role === data.role);
-    if (!hasRole) return { email: null };
+    const hasStaffRole = (roles ?? []).some((r) => r.role === "admin" || r.role === "doctor");
+    if (!hasStaffRole) return { email: null };
     return { email: row.email };
   });
 
