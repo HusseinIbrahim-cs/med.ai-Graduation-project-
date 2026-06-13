@@ -15,6 +15,8 @@ export function WaveBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const c = canvas;
+    const cx = ctx;
     let w = 0;
     let h = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -22,11 +24,11 @@ export function WaveBackground() {
     function resize() {
       w = window.innerWidth;
       h = window.innerHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.width = w * dpr;
+      c.height = h * dpr;
+      c.style.width = w + "px";
+      c.style.height = h + "px";
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     resize();
     window.addEventListener("resize", resize);
