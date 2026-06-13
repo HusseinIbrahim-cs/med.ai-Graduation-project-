@@ -41,29 +41,29 @@ export function WaveBackground() {
     ];
 
     function draw(t: number) {
-      ctx!.clearRect(0, 0, w, h);
+      cx.clearRect(0, 0, w, h);
       // base soft gradient wash
-      const g = ctx!.createLinearGradient(0, 0, 0, h);
+      const g = cx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0, "rgba(240, 253, 250, 0.6)");
       g.addColorStop(1, "rgba(224, 242, 254, 0.5)");
-      ctx!.fillStyle = g;
-      ctx!.fillRect(0, 0, w, h);
+      cx.fillStyle = g;
+      cx.fillRect(0, 0, w, h);
 
       for (const L of layers) {
-        ctx!.beginPath();
-        ctx!.moveTo(0, h);
+        cx.beginPath();
+        cx.moveTo(0, h);
         const baseY = h * L.y;
         for (let x = 0; x <= w; x += 8) {
           const y =
             baseY +
             Math.sin(x * L.len + t * L.speed) * L.amp +
             Math.cos(x * L.len * 0.6 + t * L.speed * 1.3) * L.amp * 0.4;
-          ctx!.lineTo(x, y);
+          cx.lineTo(x, y);
         }
-        ctx!.lineTo(w, h);
-        ctx!.closePath();
-        ctx!.fillStyle = L.color;
-        ctx!.fill();
+        cx.lineTo(w, h);
+        cx.closePath();
+        cx.fillStyle = L.color;
+        cx.fill();
       }
       rafRef.current = requestAnimationFrame(draw);
     }
