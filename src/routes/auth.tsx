@@ -45,7 +45,7 @@ function AuthPage() {
       const me = await getRole();
       if (me.role === "admin") navigate({ to: "/admin" });
       else if (me.role === "doctor") navigate({ to: "/welcome" });
-      else if (me.role === "patient") navigate({ to: "/records" });
+      else if (me.role === "patient") navigate({ to: "/patient" });
       else navigate({ to: "/records" });
     } catch {
       navigate({ to: "/records" });
