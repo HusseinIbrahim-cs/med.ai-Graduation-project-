@@ -24,14 +24,23 @@ export interface WrapUpDraft {
   nextTime: string;
 }
 
+export interface ChatMessage {
+  role: "user" | "model";
+  text: string;
+}
+
 interface SessionDraftState {
   patientKey: string | null;
   xray: XrayDraft;
   audio: AudioDraft;
   wrapUp: WrapUpDraft;
+  chatHistory: ChatMessage[];
   setXray: (patch: Partial<XrayDraft>) => void;
   setAudio: (patch: Partial<AudioDraft>) => void;
   setWrapUp: (patch: Partial<WrapUpDraft>) => void;
+  setChatHistory: (msgs: ChatMessage[]) => void;
+  appendChatMessage: (msg: ChatMessage) => void;
+  clearChatHistory: () => void;
   resetDraft: () => void;
   ensurePatient: (patientId: string | null) => void;
 }
@@ -52,11 +61,16 @@ export const useSessionStore = create<SessionDraftState>((set, get) => ({
   xray: emptyXray,
   audio: emptyAudio,
   wrapUp: emptyWrapUp,
+  chatHistory: [],
   setXray: (patch) => set((s) => ({ xray: { ...s.xray, ...patch } })),
   setAudio: (patch) => set((s) => ({ audio: { ...s.audio, ...patch } })),
   setWrapUp: (patch) => set((s) => ({ wrapUp: { ...s.wrapUp, ...patch } })),
+  setChatHistory: (msgs) => set({ chatHistory: msgs }),
+  appendChatMessage: (msg) =>
+    set((s) => ({ chatHistory: [...s.chatHistory, msg] })),
+  clearChatHistory: () => set({ chatHistory: [] }),
   resetDraft: () =>
-    set({ xray: emptyXray, audio: emptyAudio, wrapUp: emptyWrapUp }),
+    set({ xray: emptyXray, audio: emptyAudio, wrapUp: emptyWrapUp, chatHistory: [] }),
   ensurePatient: (patientId) => {
     const current = get().patientKey;
     if (current !== patientId) {
@@ -65,6 +79,7 @@ export const useSessionStore = create<SessionDraftState>((set, get) => ({
         xray: emptyXray,
         audio: emptyAudio,
         wrapUp: emptyWrapUp,
+        chatHistory: [],
       });
     }
   },
