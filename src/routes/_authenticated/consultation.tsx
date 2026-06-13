@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -8,17 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore, type ChatMessage } from "@/store/sessionDraft";
 import { listSessionsForPatient } from "@/lib/sessions.functions";
+import { getMyRole } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/_authenticated/consultation")({
   head: () => ({ meta: [{ title: "Clinical Assistant · MED-AI" }] }),
   component: ConsultationPage,
 });
 
-interface Message {
-  role: "user" | "model";
-  text: string;
-}
+type Message = ChatMessage;
 
 const SYSTEM_PROMPT_BASE = `You are MED-AI's Clinical Assistant — a careful, evidence-aware medical assistant
 that helps a licensed doctor reason about their current patient. Be concise, structured, and reference
@@ -47,15 +46,28 @@ function buildPatientContext(patient: any, sessions: any[]): string {
 }
 
 function ConsultationPage() {
+  const navigate = useNavigate();
   const patient = useActivePatient((s) => s.patient);
   const list = useServerFn(listSessionsForPatient);
+  const getRole = useServerFn(getMyRole);
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => getRole() });
+
+  // Guard: patients have no access to the Clinical Assistant.
+  useEffect(() => {
+    if (me?.role === "patient") navigate({ to: "/patient" });
+  }, [me?.role, navigate]);
+
   const { data: sessions = [] } = useQuery({
     queryKey: ["sessions", patient?.id],
     queryFn: () => list({ data: { patient_id: patient!.id } }),
-    enabled: !!patient,
+    enabled: !!patient && me?.role !== "patient",
   });
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Persisted chat thread (per active patient). Survives navigation between tabs.
+  const messages = useSessionStore((s) => s.chatHistory);
+  const appendChatMessage = useSessionStore((s) => s.appendChatMessage);
+  const setChatHistory = useSessionStore((s) => s.setChatHistory);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -79,7 +91,7 @@ function ConsultationPage() {
       return;
     }
     const nextMessages: Message[] = [...messages, { role: "user", text }];
-    setMessages(nextMessages);
+    setChatHistory(nextMessages);
     setInput("");
     setLoading(true);
     try {
@@ -108,13 +120,13 @@ function ConsultationPage() {
       const reply: string =
         json?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") ??
         "(no response)";
-      setMessages([...nextMessages, { role: "model", text: reply }]);
+      appendChatMessage({ role: "model", text: reply });
     } catch (e: any) {
       toast.error(e.message ?? "Chat request failed");
-      setMessages([
-        ...nextMessages,
-        { role: "model", text: `⚠️ ${e.message ?? "Request failed"}` },
-      ]);
+      appendChatMessage({
+        role: "model",
+        text: `⚠️ ${e.message ?? "Request failed"}`,
+      });
     } finally {
       setLoading(false);
     }
