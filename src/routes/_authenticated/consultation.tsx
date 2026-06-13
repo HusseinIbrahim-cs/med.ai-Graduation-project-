@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useActivePatient } from "@/store/activePatient";
+import { useSessionStore, type ChatMessage } from "@/store/sessionDraft";
 import { listSessionsForPatient } from "@/lib/sessions.functions";
+import { getMyRole } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/_authenticated/consultation")({
   head: () => ({ meta: [{ title: "Clinical Assistant · MED-AI" }] }),
