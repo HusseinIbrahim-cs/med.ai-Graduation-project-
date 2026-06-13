@@ -91,7 +91,7 @@ function ConsultationPage() {
       return;
     }
     const nextMessages: Message[] = [...messages, { role: "user", text }];
-    setMessages(nextMessages);
+    setChatHistory(nextMessages);
     setInput("");
     setLoading(true);
     try {
@@ -120,13 +120,13 @@ function ConsultationPage() {
       const reply: string =
         json?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") ??
         "(no response)";
-      setMessages([...nextMessages, { role: "model", text: reply }]);
+      appendChatMessage({ role: "model", text: reply });
     } catch (e: any) {
       toast.error(e.message ?? "Chat request failed");
-      setMessages([
-        ...nextMessages,
-        { role: "model", text: `⚠️ ${e.message ?? "Request failed"}` },
-      ]);
+      appendChatMessage({
+        role: "model",
+        text: `⚠️ ${e.message ?? "Request failed"}`,
+      });
     } finally {
       setLoading(false);
     }
