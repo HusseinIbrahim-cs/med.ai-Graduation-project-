@@ -17,10 +17,7 @@ export const Route = createFileRoute("/_authenticated/consultation")({
   component: ConsultationPage,
 });
 
-interface Message {
-  role: "user" | "model";
-  text: string;
-}
+type Message = ChatMessage;
 
 const SYSTEM_PROMPT_BASE = `You are MED-AI's Clinical Assistant — a careful, evidence-aware medical assistant
 that helps a licensed doctor reason about their current patient. Be concise, structured, and reference
@@ -49,15 +46,28 @@ function buildPatientContext(patient: any, sessions: any[]): string {
 }
 
 function ConsultationPage() {
+  const navigate = useNavigate();
   const patient = useActivePatient((s) => s.patient);
   const list = useServerFn(listSessionsForPatient);
+  const getRole = useServerFn(getMyRole);
+  const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => getRole() });
+
+  // Guard: patients have no access to the Clinical Assistant.
+  useEffect(() => {
+    if (me?.role === "patient") navigate({ to: "/patient" });
+  }, [me?.role, navigate]);
+
   const { data: sessions = [] } = useQuery({
     queryKey: ["sessions", patient?.id],
     queryFn: () => list({ data: { patient_id: patient!.id } }),
-    enabled: !!patient,
+    enabled: !!patient && me?.role !== "patient",
   });
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Persisted chat thread (per active patient). Survives navigation between tabs.
+  const messages = useSessionStore((s) => s.chatHistory);
+  const appendChatMessage = useSessionStore((s) => s.appendChatMessage);
+  const setChatHistory = useSessionStore((s) => s.setChatHistory);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
