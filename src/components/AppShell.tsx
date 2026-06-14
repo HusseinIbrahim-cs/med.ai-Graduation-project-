@@ -34,11 +34,15 @@ const DOCTOR_NAV: NavItem[] = [
   { label: "AI Diagnosis", to: "/diagnosis", icon: Activity },
   { label: "Consultation Summary", to: "/summary", icon: ClipboardList },
   { label: "Clinical Assistant", to: "/consultation", icon: Sparkles },
+];
+const DOCTOR_FOOTER: NavItem[] = [
   { label: "Settings & Profile", to: "/settings", icon: Settings },
 ];
 const ADMIN_NAV: NavItem[] = [
   { label: "Admin Dashboard", to: "/admin", icon: UserRound },
-  ...DOCTOR_NAV,
+];
+const ADMIN_FOOTER: NavItem[] = [
+  { label: "Settings & Profile", to: "/settings", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -55,11 +59,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => getRole() });
 
   const isPatient = me?.role === "patient";
+  const isAdmin = me?.role === "admin";
 
-  const nav = useMemo<NavItem[]>(() => {
-    if (me?.role === "admin") return ADMIN_NAV;
-    return DOCTOR_NAV;
-  }, [me?.role]);
+  const nav = useMemo<NavItem[]>(() => (isAdmin ? ADMIN_NAV : DOCTOR_NAV), [isAdmin]);
+  const navFooter = useMemo<NavItem[]>(() => (isAdmin ? ADMIN_FOOTER : DOCTOR_FOOTER), [isAdmin]);
 
   const { data: results = [] } = useQuery({
     queryKey: ["search", searchVal],
@@ -109,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="font-semibold tracking-tight text-lg">MED-AI</div>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex flex-col flex-1 p-3 gap-1 overflow-y-auto">
         {nav.map((item) => {
           const active = pathname === item.to;
           return (
@@ -129,6 +132,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+        <div className="mt-auto pt-3 border-t flex flex-col gap-1">
+          {navFooter.map((item) => {
+            const active = pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileNavOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "hover:bg-sidebar-accent/60",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
       <div className="p-3 border-t text-xs text-muted-foreground">
         v0.1 · Clinical preview
@@ -141,13 +165,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <WaveBackground />
 
       {/* Fixed desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-64 flex-col border-r bg-sidebar/95 backdrop-blur text-sidebar-foreground">
-        {SidebarBody}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
+        <div className="flex h-full flex-col">{SidebarBody}</div>
       </aside>
 
       <div className="flex min-h-screen flex-col md:ml-64 min-w-0">
         {/* Header */}
-        <header className="h-16 border-b bg-card/70 backdrop-blur flex items-center gap-2 md:gap-3 px-3 md:px-6 sticky top-0 z-30">
+        <header className="h-16 border-b bg-card flex items-center gap-2 md:gap-3 px-3 md:px-6 sticky top-0 z-30 shadow-sm">
           {/* Mobile hamburger */}
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger asChild>
@@ -162,58 +186,60 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="md:hidden font-semibold">MED-AI</div>
 
-          <div className="relative flex-1 max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search patient by name or ID..."
-              className="pl-9 rounded-full bg-muted/60 border-0"
-              value={searchVal}
-              onChange={(e) => {
-                setSearchVal(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-            />
-            {searchOpen && searchVal && (
-              <div className="absolute z-40 mt-2 w-full rounded-2xl border bg-popover shadow-lg overflow-hidden">
-                {results.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground">No matches</div>
-                ) : (
-                  results.map((p) => (
-                    <button
-                      key={p.id}
-                      className="w-full text-left px-3 py-2.5 hover:bg-accent text-sm flex items-center justify-between"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        useActivePatient.getState().setPatient({
-                          id: p.id,
-                          full_name: p.full_name,
-                          age: p.age,
-                          gender: p.gender,
-                          primary_concern: p.primary_concern,
-                        });
-                        useActivePatient.getState().setSessionId(null);
-                        setSearchOpen(false);
-                        setSearchVal("");
-                        navigate({ to: "/records" });
-                      }}
-                    >
-                      <span>
-                        <span className="font-medium">{p.full_name}</span>{" "}
-                        <span className="text-muted-foreground">
-                          · {p.gender ?? "—"} · {p.age ?? "?"}
+          {!isAdmin && (
+            <div className="relative flex-1 max-w-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search patient by name or ID..."
+                className="pl-9 rounded-full bg-background border border-border"
+                value={searchVal}
+                onChange={(e) => {
+                  setSearchVal(e.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+              />
+              {searchOpen && searchVal && (
+                <div className="absolute z-40 mt-2 w-full rounded-2xl border bg-popover shadow-lg overflow-hidden">
+                  {results.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">No matches</div>
+                  ) : (
+                    results.map((p) => (
+                      <button
+                        key={p.id}
+                        className="w-full text-left px-3 py-2.5 hover:bg-accent text-sm flex items-center justify-between"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          useActivePatient.getState().setPatient({
+                            id: p.id,
+                            full_name: p.full_name,
+                            age: p.age,
+                            gender: p.gender,
+                            primary_concern: p.primary_concern,
+                          });
+                          useActivePatient.getState().setSessionId(null);
+                          setSearchOpen(false);
+                          setSearchVal("");
+                          navigate({ to: "/records" });
+                        }}
+                      >
+                        <span>
+                          <span className="font-medium">{p.full_name}</span>{" "}
+                          <span className="text-muted-foreground">
+                            · {p.gender ?? "—"} · {p.age ?? "?"}
+                          </span>
                         </span>
-                      </span>
-                      {p.patient_code && (
-                        <span className="text-xs text-muted-foreground">{p.patient_code}</span>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+                        {p.patient_code && (
+                          <span className="text-xs text-muted-foreground">{p.patient_code}</span>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex-1" />
           {sessionId && (
             <Button
