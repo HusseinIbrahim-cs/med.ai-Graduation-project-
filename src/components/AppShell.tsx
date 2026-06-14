@@ -186,58 +186,60 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="md:hidden font-semibold">MED-AI</div>
 
-          <div className="relative flex-1 max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search patient by name or ID..."
-              className="pl-9 rounded-full bg-muted/60 border-0"
-              value={searchVal}
-              onChange={(e) => {
-                setSearchVal(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-            />
-            {searchOpen && searchVal && (
-              <div className="absolute z-40 mt-2 w-full rounded-2xl border bg-popover shadow-lg overflow-hidden">
-                {results.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground">No matches</div>
-                ) : (
-                  results.map((p) => (
-                    <button
-                      key={p.id}
-                      className="w-full text-left px-3 py-2.5 hover:bg-accent text-sm flex items-center justify-between"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        useActivePatient.getState().setPatient({
-                          id: p.id,
-                          full_name: p.full_name,
-                          age: p.age,
-                          gender: p.gender,
-                          primary_concern: p.primary_concern,
-                        });
-                        useActivePatient.getState().setSessionId(null);
-                        setSearchOpen(false);
-                        setSearchVal("");
-                        navigate({ to: "/records" });
-                      }}
-                    >
-                      <span>
-                        <span className="font-medium">{p.full_name}</span>{" "}
-                        <span className="text-muted-foreground">
-                          · {p.gender ?? "—"} · {p.age ?? "?"}
+          {!isAdmin && (
+            <div className="relative flex-1 max-w-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search patient by name or ID..."
+                className="pl-9 rounded-full bg-background border border-border"
+                value={searchVal}
+                onChange={(e) => {
+                  setSearchVal(e.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+              />
+              {searchOpen && searchVal && (
+                <div className="absolute z-40 mt-2 w-full rounded-2xl border bg-popover shadow-lg overflow-hidden">
+                  {results.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">No matches</div>
+                  ) : (
+                    results.map((p) => (
+                      <button
+                        key={p.id}
+                        className="w-full text-left px-3 py-2.5 hover:bg-accent text-sm flex items-center justify-between"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          useActivePatient.getState().setPatient({
+                            id: p.id,
+                            full_name: p.full_name,
+                            age: p.age,
+                            gender: p.gender,
+                            primary_concern: p.primary_concern,
+                          });
+                          useActivePatient.getState().setSessionId(null);
+                          setSearchOpen(false);
+                          setSearchVal("");
+                          navigate({ to: "/records" });
+                        }}
+                      >
+                        <span>
+                          <span className="font-medium">{p.full_name}</span>{" "}
+                          <span className="text-muted-foreground">
+                            · {p.gender ?? "—"} · {p.age ?? "?"}
+                          </span>
                         </span>
-                      </span>
-                      {p.patient_code && (
-                        <span className="text-xs text-muted-foreground">{p.patient_code}</span>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+                        {p.patient_code && (
+                          <span className="text-xs text-muted-foreground">{p.patient_code}</span>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex-1" />
           {sessionId && (
             <Button
