@@ -91,7 +91,7 @@ function RecordsPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Active patient header */}
-      <Card className="rounded-3xl border-primary/20 bg-gradient-to-br from-primary/5 to-accent/20">
+      <Card className="rounded-3xl border-primary/20 bg-card shadow-sm">
         <CardContent className="py-5 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-xs uppercase text-muted-foreground tracking-wider">Active patient</div>
