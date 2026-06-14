@@ -171,7 +171,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-screen flex-col md:ml-64 min-w-0">
         {/* Header */}
-        <header className="h-16 border-b bg-card/70 backdrop-blur flex items-center gap-2 md:gap-3 px-3 md:px-6 sticky top-0 z-30">
+        <header className="h-16 border-b bg-card flex items-center gap-2 md:gap-3 px-3 md:px-6 sticky top-0 z-30 shadow-sm">
           {/* Mobile hamburger */}
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger asChild>
