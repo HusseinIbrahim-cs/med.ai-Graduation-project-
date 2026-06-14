@@ -165,8 +165,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <WaveBackground />
 
       {/* Fixed desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-64 flex-col border-r bg-sidebar/95 backdrop-blur text-sidebar-foreground">
-        {SidebarBody}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
+        <div className="flex h-full flex-col">{SidebarBody}</div>
       </aside>
 
       <div className="flex min-h-screen flex-col md:ml-64 min-w-0">
