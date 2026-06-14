@@ -113,3 +113,102 @@ export const createAdmin = createServerFn({ method: "POST" })
     await supabaseAdmin.from("user_roles").insert({ user_id: created.user.id, role: "admin" });
     return { id: created.user.id };
   });
+
+export const updateUserProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { user_id: string; full_name: string; email: string; phone_number: string }) =>
+    z
+      .object({
+        user_id: z.string().uuid(),
+        full_name: z.string().min(1).max(200),
+        email: z.string().email().max(255),
+        phone_number: z.string().min(0).max(40),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        full_name: data.full_name,
+        email: data.email,
+        phone_number: data.phone_number.trim(),
+      })
+      .eq("id", data.user_id);
+    await supabaseAdmin.auth.admin.updateUserById(data.user_id, { email: data.email });
+    return { ok: true };
+  });
+
+export const deleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { user_id: string }) =>
+    z.object({ user_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    if (data.user_id === context.userId) throw new Error("You cannot delete your own account.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deletePatient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { patient_id: string }) =>
+    z.object({ patient_id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Find the auth user linked to this patient, if any, then delete both
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("patient_id", data.patient_id)
+      .maybeSingle();
+    await supabaseAdmin.from("patients").delete().eq("id", data.patient_id);
+    if (profile?.id) {
+      await supabaseAdmin.auth.admin.deleteUser(profile.id);
+    }
+    return { ok: true };
+  });
+
+export const updatePatient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    patient_id: string;
+    full_name: string;
+    age: number;
+    gender: string;
+    primary_concern: string;
+    phone_number: string;
+  }) =>
+    z
+      .object({
+        patient_id: z.string().uuid(),
+        full_name: z.string().min(1).max(200),
+        age: z.number().int().min(0).max(150),
+        gender: z.string().min(1).max(30),
+        primary_concern: z.string().min(0).max(2000),
+        phone_number: z.string().min(0).max(40),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("patients")
+      .update({
+        full_name: data.full_name,
+        age: data.age,
+        gender: data.gender,
+        primary_concern: data.primary_concern,
+        phone_number: data.phone_number.trim(),
+      })
+      .eq("id", data.patient_id);
+    return { ok: true };
+  });
