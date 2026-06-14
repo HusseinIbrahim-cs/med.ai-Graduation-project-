@@ -59,11 +59,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => getRole() });
 
   const isPatient = me?.role === "patient";
+  const isAdmin = me?.role === "admin";
 
-  const nav = useMemo<NavItem[]>(() => {
-    if (me?.role === "admin") return ADMIN_NAV;
-    return DOCTOR_NAV;
-  }, [me?.role]);
+  const nav = useMemo<NavItem[]>(() => (isAdmin ? ADMIN_NAV : DOCTOR_NAV), [isAdmin]);
+  const navFooter = useMemo<NavItem[]>(() => (isAdmin ? ADMIN_FOOTER : DOCTOR_FOOTER), [isAdmin]);
 
   const { data: results = [] } = useQuery({
     queryKey: ["search", searchVal],
