@@ -34,11 +34,15 @@ const DOCTOR_NAV: NavItem[] = [
   { label: "AI Diagnosis", to: "/diagnosis", icon: Activity },
   { label: "Consultation Summary", to: "/summary", icon: ClipboardList },
   { label: "Clinical Assistant", to: "/consultation", icon: Sparkles },
+];
+const DOCTOR_FOOTER: NavItem[] = [
   { label: "Settings & Profile", to: "/settings", icon: Settings },
 ];
 const ADMIN_NAV: NavItem[] = [
   { label: "Admin Dashboard", to: "/admin", icon: UserRound },
-  ...DOCTOR_NAV,
+];
+const ADMIN_FOOTER: NavItem[] = [
+  { label: "Settings & Profile", to: "/settings", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
