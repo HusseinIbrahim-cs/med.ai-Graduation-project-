@@ -112,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="font-semibold tracking-tight text-lg">MED-AI</div>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex flex-col flex-1 p-3 gap-1 overflow-y-auto">
         {nav.map((item) => {
           const active = pathname === item.to;
           return (
@@ -132,6 +132,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+        <div className="mt-auto pt-3 border-t flex flex-col gap-1">
+          {navFooter.map((item) => {
+            const active = pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileNavOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                  active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "hover:bg-sidebar-accent/60",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
       <div className="p-3 border-t text-xs text-muted-foreground">
         v0.1 · Clinical preview
